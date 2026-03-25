@@ -14,7 +14,7 @@ body,
     width: 100%;
     height: 100%;
     overflow: hidden;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     background: #0a0a0a;
 }
 
@@ -145,4 +145,128 @@ body,
     font-weight: 700;
     color: #f8fafc;
     text-align: center;
+}
+
+.incident-toast-stack {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 60;
+    width: min(420px, calc(100vw - 2rem));
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.incident-toast {
+    border-radius: 18px;
+    border: 2px solid transparent;
+    padding: 16px 18px;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 22px 50px rgba(15, 23, 42, 0.32);
+}
+
+.incident-toast-info {
+    border-color: rgba(56, 189, 248, 0.85);
+    background: rgba(8, 20, 40, 0.9);
+    color: #eff6ff;
+}
+
+.incident-toast-success {
+    border-color: rgba(52, 211, 153, 0.88);
+    background: rgba(6, 32, 23, 0.9);
+    color: #f0fdf4;
+}
+
+.incident-toast-error {
+    border-color: rgba(248, 113, 113, 0.9);
+    background: rgba(56, 18, 18, 0.92);
+    color: #fff1f2;
+}
+
+.incident-toast-title {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+
+.incident-toast-message {
+    margin-top: 8px;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.incident-banner-wrap {
+    position: fixed;
+    inset-inline: 0;
+    top: 96px;
+    z-index: 58;
+    display: flex;
+    justify-content: center;
+}
+
+.incident-banner {
+    width: min(680px, calc(100vw - 2rem));
+    border-radius: 24px;
+    border: 2px solid rgba(253, 186, 116, 0.82);
+    background: linear-gradient(180deg, rgba(79, 14, 14, 0.94) 0%, rgba(33, 12, 12, 0.92) 100%);
+    padding: 18px 22px;
+    box-shadow: 0 26px 60px rgba(69, 10, 10, 0.35);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+.incident-banner-eyebrow {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #fde68a;
+}
+
+.incident-banner-title {
+    margin-top: 8px;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.15;
+    color: #fff7ed;
+}
+
+.incident-banner-message {
+    margin-top: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: rgba(255, 247, 237, 0.92);
+}
+
+@media (max-width: 768px) {
+    .incident-toast-stack {
+        left: 12px;
+        right: 12px;
+        top: 12px;
+        width: auto;
+    }
+
+    .incident-banner-wrap {
+        top: auto;
+        bottom: 104px;
+        padding-inline: 12px;
+    }
+
+    .incident-banner {
+        width: 100%;
+    }
+
+    .incident-banner-title {
+        font-size: 22px;
+    }
+
+    .incident-toast-message {
+        font-size: 15px;
+    }
 }

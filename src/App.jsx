@@ -3,9 +3,8 @@ import { Canvas } from '@react-three/fiber'
 import Scene from './components/Scene'
 import Worker from './components/Worker'
 import Controls from './components/Controls'
-import LivePpePanel from './components/LivePpePanel'
-import usePpeMonitor from './hooks/usePpeMonitor'
 
+const INCIDENT_WEBHOOK_URL = 'https://aagnya.app.n8n.cloud/webhook-test/incident-alert'
 const PPE_ITEMS = [
     { key: 'helmet', label: 'Helmet' },
     { key: 'vest', label: 'Vest' },
@@ -21,17 +20,39 @@ const ROOM_LIBRARY = [
     { id: 'quality', name: 'Quality Control', accent: '#a855f7' },
     { id: 'dispatch', name: 'Dispatch Dock', accent: '#22c55e' },
 ]
+const INCIDENT_SOURCES = {
+    hub: {
+        fire: [9.5, 0, 5.6],
+        ladder: [-6.5, 0, 8.2],
+    },
+    receiving: {
+        fire: [6.4, 0, 1.2],
+        ladder: [10.8, 0, -6.2],
+    },
+    packing: {
+        fire: [1.6, 0, 6.4],
+        ladder: [-10.8, 0, 5.7],
+    },
+    cold: {
+        fire: [6.2, 0, 5],
+        ladder: [-9.5, 0, 6.9],
+    },
+    maintenance: {
+        fire: [1.1, 0, -2],
+        ladder: [-8.6, 0, 6.3],
+    },
+    quality: {
+        fire: [-1.4, 0, 7.1],
+        ladder: [10.4, 0, 6.4],
+    },
+    dispatch: {
+        fire: [4.3, 0, 5.1],
+        ladder: [-10.6, 0, 6.4],
+    },
+}
 
-function buildHeadBox(worker) {
-    const [x1, y1, x2, y2] = worker.bbox
-    const width = x2 - x1
-    const height = y2 - y1
-    return [
-        x1 + width * 0.16,
-        y1,
-        x2 - width * 0.16,
-        y1 + height * 0.3,
-    ]
+function buildIncidentNotification(id, title, message, tone = 'info') {
+    return { id, title, message, tone }
 }
 
 function getAssignmentScore(workerIndex, complianceKey) {
@@ -178,7 +199,10 @@ export default function App() {
     const [roomCount, setRoomCount] = useState(4)
     const [selectedRoomIndex, setSelectedRoomIndex] = useState(null)
     const [transitionState, setTransitionState] = useState(null)
-    const [renderCanvas, setRenderCanvas] = useState(null)
+    const [fireAreas, setFireAreas] = useState({})
+    const [ladderFallState, setLadderFallState] = useState({ trigger: 0, areaId: null })
+    const [incidentNotifications, setIncidentNotifications] = useState([])
+    const [incidentAlarm, setIncidentAlarm] = useState(null)
     const [complianceTargets, setComplianceTargets] = useState({
         helmet: 100,
         vest: 100,
@@ -191,6 +215,44 @@ export default function App() {
             setSelectedRoomIndex(null)
         }
     }, [selectedRoomIndex, roomCount])
+
+    useEffect(() => {
+        if (!ladderFallState.trigger) {
+            return undefined
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setLadderFallState((prev) =>
+                prev.trigger === ladderFallState.trigger ? { trigger: 0, areaId: null } : prev
+            )
+        }, 3200)
+
+        return () => window.clearTimeout(timeoutId)
+    }, [ladderFallState])
+
+    useEffect(() => {
+        if (incidentNotifications.length === 0) {
+            return undefined
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setIncidentNotifications((prev) => prev.slice(1))
+        }, 5600)
+
+        return () => window.clearTimeout(timeoutId)
+    }, [incidentNotifications])
+
+    useEffect(() => {
+        if (!incidentAlarm) {
+            return undefined
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setIncidentAlarm(null)
+        }, 6800)
+
+        return () => window.clearTimeout(timeoutId)
+    }, [incidentAlarm])
 
     // Generate worker list based on count + current area + per-compliance targets.
     const workers = useMemo(() => {
@@ -234,35 +296,15 @@ export default function App() {
         })
     }, [workerCount, workers])
 
-    const liveMonitor = usePpeMonitor({ renderCanvas })
-    const showSceneLabels = !liveMonitor.enabled
-    const liveOverlayWorkers = useMemo(() => {
-        if (!liveMonitor.enabled || !liveMonitor.frameSize.width || !liveMonitor.frameSize.height) {
-            return []
-        }
-
-        return liveMonitor.workers.map((worker) => {
-            const [x1, y1, x2, y2] = worker.bbox
-            const [hx1, hy1, hx2, hy2] = buildHeadBox(worker)
-            return {
-                id: worker.id,
-                helmet: worker.helmet,
-                personStyle: {
-                    left: `${(x1 / liveMonitor.frameSize.width) * 100}%`,
-                    top: `${(y1 / liveMonitor.frameSize.height) * 100}%`,
-                    width: `${((x2 - x1) / liveMonitor.frameSize.width) * 100}%`,
-                    height: `${((y2 - y1) / liveMonitor.frameSize.height) * 100}%`,
-                },
-                headStyle: {
-                    left: `${(hx1 / liveMonitor.frameSize.width) * 100}%`,
-                    top: `${(hy1 / liveMonitor.frameSize.height) * 100}%`,
-                    width: `${((hx2 - hx1) / liveMonitor.frameSize.width) * 100}%`,
-                    height: `${((hy2 - hy1) / liveMonitor.frameSize.height) * 100}%`,
-                },
-            }
-        })
-    }, [liveMonitor.enabled, liveMonitor.frameSize.height, liveMonitor.frameSize.width, liveMonitor.workers])
-
+    const showSceneLabels = true
+    const fireActive = Boolean(fireAreas[currentArea.id])
+    const ladderActive = ladderFallState.areaId === currentArea.id && ladderFallState.trigger > 0
+    const panicActive = fireActive || ladderActive
+    const incidentSource = fireActive
+        ? INCIDENT_SOURCES[currentArea.id]?.fire ?? INCIDENT_SOURCES.hub.fire
+        : ladderActive
+            ? INCIDENT_SOURCES[currentArea.id]?.ladder ?? INCIDENT_SOURCES.hub.ladder
+            : null
     const startTransitionToArea = (targetLabel, onMidpoint) => {
         if (transitionState) {
             return
@@ -305,18 +347,117 @@ export default function App() {
         })
     }
 
+    const pushIncidentNotification = (title, message, tone = 'info') => {
+        const notification = buildIncidentNotification(`${Date.now()}-${Math.random()}`, title, message, tone)
+        setIncidentNotifications((prev) => [...prev.slice(-2), notification])
+    }
+
+    const sendIncidentWebhook = async ({ eventType, severity, details, location, responderLabel }) => {
+        pushIncidentNotification(
+            `${responderLabel} Pending`,
+            `Incident sent for ${location}. Waiting for n8n mail confirmation...`,
+            'info'
+        )
+
+        try {
+            const response = await fetch(INCIDENT_WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    event_type: eventType,
+                    severity,
+                    details,
+                    location,
+                    responder: responderLabel,
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error(`Webhook failed with status ${response.status}`)
+            }
+
+            let responseMessage = ''
+            try {
+                const payload = await response.clone().json()
+                responseMessage = payload?.message ?? payload?.status ?? ''
+            } catch {
+                try {
+                    responseMessage = await response.text()
+                } catch {
+                    responseMessage = ''
+                }
+            }
+
+            const confirmedMessage = responseMessage
+                ? `${responderLabel} notified for ${location}. ${responseMessage}`
+                : `${responderLabel} has been notified for ${location} after n8n completed the mail step.`
+
+            pushIncidentNotification(
+                `${responderLabel} Notified`,
+                confirmedMessage,
+                'success'
+            )
+            setIncidentAlarm({
+                responderLabel,
+                location,
+                message: confirmedMessage,
+            })
+        } catch (error) {
+            pushIncidentNotification(
+                'Webhook Error',
+                error.message || 'Unable to reach incident workflow.',
+                'error'
+            )
+        }
+    }
+
+    const handleStartFire = () => {
+        setFireAreas((prev) => ({
+            ...prev,
+            [currentArea.id]: true,
+        }))
+        void sendIncidentWebhook({
+            eventType: 'fire',
+            severity: 'high',
+            details: {
+                injury_type: 'fire',
+                fire_detected: true,
+                violence_detected: false,
+            },
+            location: currentArea.name,
+            responderLabel: 'Fire Brigade',
+        })
+    }
+
+    const handleTriggerLadderFall = () => {
+        setLadderFallState({
+            trigger: Date.now(),
+            areaId: currentArea.id,
+        })
+        void sendIncidentWebhook({
+            eventType: 'accident',
+            severity: 'high',
+            details: {
+                injury_type: 'fall',
+                fire_detected: false,
+                violence_detected: false,
+            },
+            location: currentArea.name,
+            responderLabel: 'Ambulance',
+        })
+    }
+
     return (
         <div className="w-full h-full relative" style={{ background: 'linear-gradient(180deg, #dce4eb 0%, #c6d1dc 100%)' }}>
             {/* 3D Canvas */}
             <Canvas
                 dpr={[1, 1.25]}
                 shadows
-                gl={{ antialias: false, alpha: false, preserveDrawingBuffer: true }}
+                gl={{ antialias: false, alpha: false }}
                 camera={{ fov: 50, near: 0.1, far: 200 }}
                 style={{ position: 'absolute', inset: 0 }}
-                onCreated={({ gl }) => {
-                    setRenderCanvas(gl.domElement)
-                }}
             >
                 <Scene
                     lightingMode={lightingMode}
@@ -328,6 +469,8 @@ export default function App() {
                     onEnterRoom={handleEnterRoom}
                     onReturnToHub={handleReturnToHub}
                     showLabels={showSceneLabels}
+                    fireActive={fireActive}
+                    ladderFallTrigger={ladderActive ? ladderFallState.trigger : 0}
                 />
 
                 {workers.map((w) => (
@@ -341,27 +484,45 @@ export default function App() {
                         obstacles={w.obstacles}
                         ppeConfig={w.ppeConfig}
                         showLabel={showSceneLabels}
+                        panicActive={panicActive}
+                        incidentSource={incidentSource}
                     />
                 ))}
             </Canvas>
 
-            {liveMonitor.enabled ? (
-                <div className="absolute inset-0 z-10 pointer-events-none">
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full border border-emerald-300/35 bg-slate-950/55 px-4 py-1.5 text-[11px] font-medium tracking-[0.18em] text-emerald-100 uppercase">
-                        Live Helmet Overlay
-                    </div>
-                    {liveOverlayWorkers.map((worker) => (
-                        <div key={worker.id}>
-                            <div
-                                className="absolute border border-white/80 rounded-[4px]"
-                                style={worker.personStyle}
-                            />
-                            <div
-                                className={`absolute rounded-[4px] border-2 ${worker.helmet ? 'border-emerald-400' : 'border-red-500'}`}
-                                style={worker.headStyle}
-                            />
+            {incidentNotifications.length ? (
+                <div className="incident-toast-stack pointer-events-none">
+                    {incidentNotifications.map((notification) => (
+                        <div
+                            key={notification.id}
+                            className={`incident-toast slide-in ${
+                                notification.tone === 'success'
+                                    ? 'incident-toast-success'
+                                    : notification.tone === 'error'
+                                        ? 'incident-toast-error'
+                                        : 'incident-toast-info'
+                            }`}
+                        >
+                            <p className="incident-toast-title">{notification.title}</p>
+                            <p className="incident-toast-message">{notification.message}</p>
                         </div>
                     ))}
+                </div>
+            ) : null}
+
+            {incidentAlarm ? (
+                <div className="incident-banner-wrap pointer-events-none">
+                    <div className="incident-banner">
+                        <p className="incident-banner-eyebrow">
+                            Emergency Notification Confirmed
+                        </p>
+                        <p className="incident-banner-title">
+                            {incidentAlarm.responderLabel} notified for {incidentAlarm.location}
+                        </p>
+                        <p className="incident-banner-message">
+                            {incidentAlarm.message}
+                        </p>
+                    </div>
                 </div>
             ) : null}
 
@@ -378,25 +539,10 @@ export default function App() {
                 currentRoomName={currentArea.name}
                 complianceTargets={complianceTargets}
                 setComplianceTargets={setComplianceTargets}
-                liveMonitorEnabled={liveMonitor.enabled}
-                liveMonitorState={liveMonitor.connectionState}
-            />
-
-            <LivePpePanel
-                backendUrl={liveMonitor.backendUrl}
-                setBackendUrl={liveMonitor.setBackendUrl}
-                enabled={liveMonitor.enabled}
-                connectionState={liveMonitor.connectionState}
-                error={liveMonitor.error}
-                frameRate={liveMonitor.frameRate}
-                workers={liveMonitor.workers}
-                alerts={liveMonitor.alerts}
-                backendWorkerCount={liveMonitor.backendWorkerCount}
-                backendDetectionCount={liveMonitor.backendDetectionCount}
-                backendPersonCount={liveMonitor.backendPersonCount}
-                backendHelmetCount={liveMonitor.backendHelmetCount}
-                onStart={liveMonitor.startMonitoring}
-                onStop={liveMonitor.stopMonitoring}
+                onStartFire={handleStartFire}
+                onTriggerLadderFall={handleTriggerLadderFall}
+                fireActive={fireActive}
+                ladderActive={ladderActive}
             />
 
             <div className={`room-transition-overlay ${transitionState ? 'active' : ''}`}>
@@ -426,10 +572,6 @@ export default function App() {
                     <div className="w-px h-4 bg-gray-600/50" />
                     <span className="text-gray-400 text-[11px]">
                         View: {currentArea.name}{selectedRoomIndex === null ? '' : ` (${selectedRoomIndex + 1}/${roomCount})`}
-                    </span>
-                    <div className="w-px h-4 bg-gray-600/50" />
-                    <span className="text-gray-400 text-[11px]">
-                        Backend: {liveMonitor.connectionState}
                     </span>
                     <div className="w-px h-4 bg-gray-600/50" />
                     <span className="text-gray-500 text-[10px]">

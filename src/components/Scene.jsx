@@ -1,8 +1,294 @@
+import { useEffect, useMemo, useRef } from 'react'
 import { Html } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 import useCameraControls from '../hooks/useCameraControls'
 
 const HUB_SIZE = { width: 40, depth: 30, wallHeight: 9 }
 const ROOM_SIZE = { width: 34, depth: 24, wallHeight: 9 }
+const INCIDENT_ANCHORS = {
+    hub: {
+        fire: [9.5, 0, 5.6],
+        ladder: [-6.5, 0, 8.2],
+        ladderRotation: [0, 0.16, 0],
+    },
+    receiving: {
+        fire: [6.4, 0, 1.2],
+        ladder: [10.8, 0, -6.2],
+        ladderRotation: [0, -0.22, 0],
+    },
+    packing: {
+        fire: [1.6, 0, 6.4],
+        ladder: [-10.8, 0, 5.7],
+        ladderRotation: [0, 0.12, 0],
+    },
+    cold: {
+        fire: [6.2, 0, 5],
+        ladder: [-9.5, 0, 6.9],
+        ladderRotation: [0, 0.08, 0],
+    },
+    maintenance: {
+        fire: [1.1, 0, -2],
+        ladder: [-8.6, 0, 6.3],
+        ladderRotation: [0, 0.14, 0],
+    },
+    quality: {
+        fire: [-1.4, 0, 7.1],
+        ladder: [10.4, 0, 6.4],
+        ladderRotation: [0, -0.1, 0],
+    },
+    dispatch: {
+        fire: [4.3, 0, 5.1],
+        ladder: [-10.6, 0, 6.4],
+        ladderRotation: [0, 0.18, 0],
+    },
+}
+
+function easeOutQuad(t) {
+    return 1 - (1 - t) * (1 - t)
+}
+
+function createFireLayout(width, depth, areaId) {
+    const seed = areaId.split('').reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 1), 0)
+    const clusters = Array.from({ length: 12 }, (_, index) => {
+        const angle = (index / 12) * Math.PI * 2 + seed * 0.0017
+        const radiusX = width * (0.16 + (index % 3) * 0.06)
+        const radiusZ = depth * (0.14 + (index % 4) * 0.045)
+        return {
+            x: Math.cos(angle) * radiusX * (0.66 + ((seed + index * 13) % 7) * 0.04),
+            z: Math.sin(angle) * radiusZ * (0.62 + ((seed + index * 17) % 9) * 0.03),
+            scale: 0.85 + (index % 5) * 0.16,
+            speed: 0.8 + (index % 4) * 0.17,
+        }
+    })
+
+    const smokeColumns = Array.from({ length: 10 }, (_, index) => ({
+        x: Math.cos((index / 10) * Math.PI * 2) * width * (0.12 + (index % 2) * 0.1),
+        z: Math.sin((index / 10) * Math.PI * 2) * depth * (0.1 + (index % 3) * 0.07),
+        offset: index * 0.11,
+    }))
+
+    return { clusters, smokeColumns }
+}
+
+function FireIncident({ position, width, depth, areaId }) {
+    const flameRefs = useRef([])
+    const innerFlameRefs = useRef([])
+    const smokeRefs = useRef([])
+    const heatRefs = useRef([])
+    const keyLightRef = useRef()
+    const fillLightRef = useRef()
+    const layout = useMemo(() => createFireLayout(width, depth, areaId), [areaId, depth, width])
+    const glowWidth = Math.max(4.5, width * 0.6)
+    const glowDepth = Math.max(4, depth * 0.5)
+
+    useFrame(({ clock }) => {
+        const t = clock.getElapsedTime()
+        flameRefs.current.forEach((mesh, index) => {
+            if (!mesh) return
+            const cluster = layout.clusters[index]
+            mesh.position.y = 0.6 + Math.sin(t * (4.2 + cluster.speed) + index) * 0.14
+            mesh.scale.y = 1 + Math.sin(t * (5.1 + cluster.speed) + index * 1.7) * 0.26
+            mesh.rotation.y = t * (0.7 + cluster.speed * 0.3)
+        })
+        innerFlameRefs.current.forEach((mesh, index) => {
+            if (!mesh) return
+            const cluster = layout.clusters[index]
+            mesh.position.y = 0.38 + Math.sin(t * (5.7 + cluster.speed) + index) * 0.1
+            mesh.scale.y = 1 + Math.sin(t * (6.6 + cluster.speed) + index) * 0.22
+            mesh.rotation.y = -t * (0.9 + cluster.speed * 0.22)
+        })
+        smokeRefs.current.forEach((mesh, index) => {
+            if (!mesh) return
+            const smoke = layout.smokeColumns[index]
+            const drift = (t * (0.11 + smoke.offset * 0.08) + smoke.offset) % 1
+            mesh.position.set(
+                smoke.x + Math.sin(t * 0.7 + index) * 0.28,
+                1 + drift * 4.8,
+                smoke.z + Math.cos(t * 0.54 + index) * 0.22
+            )
+            mesh.material.opacity = 0.28 * (1 - drift * 0.78)
+            mesh.scale.setScalar(0.55 + drift * 1.45)
+        })
+        heatRefs.current.forEach((mesh, index) => {
+            if (!mesh) return
+            mesh.material.opacity = 0.12 + Math.sin(t * 2.4 + index) * 0.03
+            mesh.rotation.z = Math.sin(t * 0.8 + index) * 0.08
+        })
+        if (keyLightRef.current) {
+            keyLightRef.current.intensity = 2.8 + Math.sin(t * 6.4) * 0.45
+        }
+        if (fillLightRef.current) {
+            fillLightRef.current.intensity = 1.4 + Math.cos(t * 4.8) * 0.25
+        }
+    })
+
+    return (
+        <group position={position}>
+            <pointLight
+                ref={keyLightRef}
+                position={[0, 2.4, 0]}
+                intensity={2.8}
+                distance={Math.max(width, depth) * 2.2}
+                color="#ef4444"
+            />
+            <pointLight
+                ref={fillLightRef}
+                position={[0, 3.8, 0]}
+                intensity={1.4}
+                distance={Math.max(width, depth) * 2.8}
+                color="#f97316"
+            />
+            <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[glowWidth, glowDepth]} />
+                <meshBasicMaterial color="#dc2626" transparent opacity={0.28} />
+            </mesh>
+            <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[glowWidth * 0.76, glowDepth * 0.72]} />
+                <meshBasicMaterial color="#fb7185" transparent opacity={0.18} />
+            </mesh>
+            {layout.clusters.map((cluster, index) => (
+                <group key={index}>
+                    <group ref={(node) => { flameRefs.current[index] = node }}>
+                        <mesh position={[cluster.x, 0.6, cluster.z]} castShadow>
+                            <coneGeometry args={[0.42 * cluster.scale, 1.4 * cluster.scale, 18]} />
+                            <meshStandardMaterial color="#dc2626" emissive="#ef4444" emissiveIntensity={1.65} />
+                        </mesh>
+                    </group>
+                    <group ref={(node) => { innerFlameRefs.current[index] = node }}>
+                        <mesh position={[cluster.x, 0.38, cluster.z]} castShadow>
+                            <coneGeometry args={[0.2 * cluster.scale, 0.84 * cluster.scale, 16]} />
+                            <meshStandardMaterial color="#fb7185" emissive="#f97316" emissiveIntensity={1.55} />
+                        </mesh>
+                    </group>
+                    <mesh position={[cluster.x, 0.08, cluster.z]} rotation={[-Math.PI / 2, 0, 0]}>
+                        <circleGeometry args={[0.52 * cluster.scale, 18]} />
+                        <meshBasicMaterial color="#ef4444" transparent opacity={0.22} />
+                    </mesh>
+                </group>
+            ))}
+            {layout.smokeColumns.map((smoke, index) => (
+                <mesh key={index} ref={(node) => { smokeRefs.current[index] = node }}>
+                    <sphereGeometry args={[0.52, 12, 12]} />
+                    <meshStandardMaterial color="#475569" transparent opacity={0.18} />
+                </mesh>
+            ))}
+            {[
+                { x: 0, y: 2.8, z: 0, w: glowWidth * 0.95, h: 3.8 },
+                { x: -glowWidth * 0.12, y: 2.2, z: -glowDepth * 0.08, w: glowWidth * 0.62, h: 3.1 },
+                { x: glowWidth * 0.15, y: 2.4, z: glowDepth * 0.1, w: glowWidth * 0.58, h: 3.3 },
+            ].map((sheet, index) => (
+                <mesh
+                    key={index}
+                    ref={(node) => { heatRefs.current[index] = node }}
+                    position={[sheet.x, sheet.y, sheet.z]}
+                    rotation={[0, index * 0.55, 0]}
+                >
+                    <planeGeometry args={[sheet.w, sheet.h]} />
+                    <meshBasicMaterial color="#94a3b8" transparent opacity={0.12} depthWrite={false} />
+                </mesh>
+            ))}
+            <mesh position={[0, 5.9, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[glowWidth * 1.18, glowDepth * 1.08]} />
+                <meshBasicMaterial color="#111827" transparent opacity={0.16} depthWrite={false} />
+            </mesh>
+        </group>
+    )
+}
+
+function IncidentWorkerFigure({ bodyRef }) {
+    return (
+        <group ref={bodyRef} visible={false}>
+            <mesh position={[0, 1.55, 0]} castShadow>
+                <sphereGeometry args={[0.18, 12, 12]} />
+                <meshStandardMaterial color="#8d5524" />
+            </mesh>
+            <mesh position={[0, 1.02, 0]} castShadow>
+                <boxGeometry args={[0.34, 0.72, 0.22]} />
+                <meshStandardMaterial color="#39ff14" />
+            </mesh>
+            <mesh position={[-0.16, 1.02, 0]} castShadow>
+                <boxGeometry args={[0.08, 0.58, 0.08]} />
+                <meshStandardMaterial color="#1e293b" />
+            </mesh>
+            <mesh position={[0.16, 1.02, 0]} castShadow>
+                <boxGeometry args={[0.08, 0.58, 0.08]} />
+                <meshStandardMaterial color="#1e293b" />
+            </mesh>
+            <mesh position={[-0.08, 0.44, 0]} castShadow>
+                <boxGeometry args={[0.1, 0.68, 0.1]} />
+                <meshStandardMaterial color="#1e3a8a" />
+            </mesh>
+            <mesh position={[0.08, 0.44, 0]} castShadow>
+                <boxGeometry args={[0.1, 0.68, 0.1]} />
+                <meshStandardMaterial color="#1e3a8a" />
+            </mesh>
+        </group>
+    )
+}
+
+function LadderFallIncident({ position, rotation = [0, 0, 0], trigger }) {
+    const rootRef = useRef()
+    const workerRef = useRef()
+    const elapsedRef = useRef(3)
+    const activeRef = useRef(false)
+
+    useEffect(() => {
+        if (!trigger) return
+        elapsedRef.current = 0
+        activeRef.current = true
+        if (rootRef.current) {
+            rootRef.current.visible = true
+        }
+        if (workerRef.current) {
+            workerRef.current.visible = true
+        }
+    }, [trigger])
+
+    useFrame((_, delta) => {
+        if (!activeRef.current || !workerRef.current || !rootRef.current) return
+
+        elapsedRef.current += delta
+        const t = elapsedRef.current
+
+        if (t >= 3) {
+            activeRef.current = false
+            workerRef.current.visible = false
+            rootRef.current.visible = false
+            return
+        }
+
+        workerRef.current.visible = true
+        if (t < 1.8) {
+            const progress = t / 1.8
+            workerRef.current.position.set(0, 0.28 + progress * 2.5, 0.16)
+            workerRef.current.rotation.set(0, 0, 0)
+        } else {
+            const fall = easeOutQuad((t - 1.8) / 1.2)
+            workerRef.current.position.set(0.18 + fall * 1.15, 2.78 - fall * 2.28, 0.22)
+            workerRef.current.rotation.set(0, 0, -fall * 1.55)
+        }
+    })
+
+    return (
+        <group ref={rootRef} position={position} rotation={rotation} visible={false}>
+            <mesh position={[0, 1.55, -0.04]} castShadow>
+                <boxGeometry args={[0.1, 3.1, 0.1]} />
+                <meshStandardMaterial color="#cbd5e1" metalness={0.35} roughness={0.42} />
+            </mesh>
+            <mesh position={[0.72, 1.55, -0.04]} castShadow>
+                <boxGeometry args={[0.1, 3.1, 0.1]} />
+                <meshStandardMaterial color="#cbd5e1" metalness={0.35} roughness={0.42} />
+            </mesh>
+            {Array.from({ length: 7 }, (_, index) => (
+                <mesh key={index} position={[0.36, 0.4 + index * 0.42, -0.04]} castShadow>
+                    <boxGeometry args={[0.62, 0.05, 0.08]} />
+                    <meshStandardMaterial color="#94a3b8" metalness={0.3} roughness={0.48} />
+                </mesh>
+            ))}
+            <IncidentWorkerFigure bodyRef={workerRef} />
+        </group>
+    )
+}
 
 function Floor({ width, depth, color = '#52525b' }) {
     return (
@@ -636,14 +922,35 @@ export default function Scene({
     onEnterRoom,
     onReturnToHub,
     showLabels = true,
+    fireActive = false,
+    ladderFallTrigger = 0,
 }) {
     useCameraControls(selectedRoomIndex ?? 'hub', currentArea.id)
+    const incidentAnchor = INCIDENT_ANCHORS[currentArea.id] ?? INCIDENT_ANCHORS.hub
+    const incidentFootprint = selectedRoomIndex === null
+        ? { width: HUB_SIZE.width, depth: HUB_SIZE.depth }
+        : { width: ROOM_SIZE.width, depth: ROOM_SIZE.depth }
 
     return (
         <>
             <SceneBackground mode={lightingMode} areaId={currentArea.id} />
             <SceneFog mode={lightingMode} areaId={currentArea.id} />
             <SceneLighting mode={lightingMode} areaId={currentArea.id} />
+            {fireActive ? (
+                <FireIncident
+                    position={incidentAnchor.fire}
+                    width={incidentFootprint.width}
+                    depth={incidentFootprint.depth}
+                    areaId={currentArea.id}
+                />
+            ) : null}
+            {ladderFallTrigger ? (
+                <LadderFallIncident
+                    position={incidentAnchor.ladder}
+                    rotation={incidentAnchor.ladderRotation}
+                    trigger={ladderFallTrigger}
+                />
+            ) : null}
             {selectedRoomIndex === null ? (
                 <HubScene roomOptions={roomOptions} onEnterRoom={onEnterRoom} showLabels={showLabels} />
             ) : (

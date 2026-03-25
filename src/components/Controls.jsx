@@ -5,8 +5,10 @@ export default function Controls({
     roomCount, setRoomCount,
     currentRoomName,
     complianceTargets, setComplianceTargets,
-    liveMonitorEnabled,
-    liveMonitorState,
+    onStartFire,
+    onTriggerLadderFall,
+    fireActive,
+    ladderActive,
 }) {
     const updateComplianceTarget = (item, value) => {
         setComplianceTargets((prev) => ({ ...prev, [item]: value }))
@@ -16,12 +18,12 @@ export default function Controls({
         <div className="fixed top-4 left-4 z-50 flex flex-col gap-3">
             {/* Title bar */}
             <div className="glass rounded-xl px-4 py-3 flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${liveMonitorEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-red-500 animate-pulse'}`} />
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-white text-sm font-semibold tracking-wide">
                     WAREHOUSE CCTV
                 </span>
                 <span className="text-gray-400 text-xs ml-2">
-                    {liveMonitorEnabled ? `LIVE ${liveMonitorState.toUpperCase()}` : 'SIMULATION'}
+                    SIMULATION
                 </span>
             </div>
 
@@ -100,6 +102,34 @@ export default function Controls({
                     <p className="text-[10px] text-emerald-300/80 mt-2">
                         Current: {currentRoomName}
                     </p>
+                </div>
+            </div>
+
+            <div className="glass rounded-xl px-4 py-3">
+                <p className="text-gray-400 text-[10px] uppercase tracking-widest font-medium mb-2.5">
+                    Incidents
+                </p>
+                <div className="flex flex-col gap-2">
+                    <button
+                        onClick={onStartFire}
+                        className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                            fireActive
+                                ? 'bg-orange-500/85 text-white hover:bg-orange-400'
+                                : 'bg-red-500/85 text-white hover:bg-red-400'
+                        }`}
+                    >
+                        {fireActive ? `Fire Active In ${currentRoomName}` : 'Start Fire'}
+                    </button>
+                    <button
+                        onClick={onTriggerLadderFall}
+                        className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                            ladderActive
+                                ? 'bg-amber-500/85 text-slate-950'
+                                : 'bg-cyan-400 text-slate-950 hover:bg-cyan-300'
+                        }`}
+                    >
+                        {ladderActive ? 'Ladder Fall Running' : 'Trigger Ladder Fall'}
+                    </button>
                 </div>
             </div>
 

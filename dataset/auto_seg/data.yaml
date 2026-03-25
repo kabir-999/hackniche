@@ -1,9 +1,0 @@
-path: /Users/kabirmathur/Documents/warehouse_env/dataset/auto_seg
-train: images/train
-val: images/val
-names:
-  0: person
-  1: helmet
-  2: vest
-  3: gloves
-  4: mask
