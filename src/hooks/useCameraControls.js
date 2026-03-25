@@ -5,24 +5,24 @@ import * as THREE from 'three'
 const MOVE_SPEED = 0.3
 const LERP_FACTOR = 0.08
 const ANGLE_SPEED = 0.02
-const LOOK_DISTANCE = 24
+const LOOK_DISTANCE = 18
 const HUB_CAMERA_CONFIG = {
-    position: [-12.5, 7.8, 8.5],
-    yaw: Math.atan2(14, -11),
-    pitch: -0.2,
-    minX: -15,
-    maxX: 15,
-    minZ: -9,
-    maxZ: 11,
+    position: [-9.4, 6.9, 5.9],
+    yaw: Math.atan2(11.5, -8.2),
+    pitch: -0.18,
+    minX: -13,
+    maxX: 13,
+    minZ: -7,
+    maxZ: 8,
 }
 const ROOM_CAMERA_CONFIG = {
-    position: [-10.5, 7.4, 7.4],
-    yaw: Math.atan2(15, -9),
-    pitch: -0.24,
-    minX: -13.5,
-    maxX: 13.5,
-    minZ: -8.5,
-    maxZ: 9.5,
+    position: [-8.2, 6.6, 5.6],
+    yaw: Math.atan2(11.8, -7.1),
+    pitch: -0.22,
+    minX: -11.5,
+    maxX: 11.5,
+    minZ: -6.8,
+    maxZ: 7.6,
 }
 const MIN_PITCH = -0.65
 const MAX_PITCH = -0.08

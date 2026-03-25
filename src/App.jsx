@@ -3,6 +3,8 @@ import { Canvas } from '@react-three/fiber'
 import Scene from './components/Scene'
 import Worker from './components/Worker'
 import Controls from './components/Controls'
+import LivePpePanel from './components/LivePpePanel'
+import usePpeMonitor from './hooks/usePpeMonitor'
 
 const PPE_ITEMS = [
     { key: 'helmet', label: 'Helmet' },
@@ -164,6 +166,7 @@ export default function App() {
     const [roomCount, setRoomCount] = useState(4)
     const [selectedRoomIndex, setSelectedRoomIndex] = useState(null)
     const [transitionState, setTransitionState] = useState(null)
+    const [renderCanvas, setRenderCanvas] = useState(null)
     const [complianceTargets, setComplianceTargets] = useState({
         helmet: 100,
         vest: 100,
@@ -219,6 +222,8 @@ export default function App() {
         })
     }, [workerCount, workers])
 
+    const liveMonitor = usePpeMonitor({ renderCanvas })
+
     const startTransitionToArea = (targetLabel, onMidpoint) => {
         if (transitionState) {
             return
@@ -266,9 +271,12 @@ export default function App() {
             {/* 3D Canvas */}
             <Canvas
                 shadows
-                gl={{ antialias: true, alpha: false }}
+                gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
                 camera={{ fov: 50, near: 0.1, far: 200 }}
                 style={{ position: 'absolute', inset: 0 }}
+                onCreated={({ gl }) => {
+                    setRenderCanvas(gl.domElement)
+                }}
             >
                 <Scene
                     lightingMode={lightingMode}
@@ -295,6 +303,19 @@ export default function App() {
                 ))}
             </Canvas>
 
+            {liveMonitor.depthPreviewSrc ? (
+                <div className="absolute inset-0 z-10 bg-slate-700/70 backdrop-blur-[1px]">
+                    <img
+                        src={liveMonitor.depthPreviewSrc}
+                        alt="Warehouse depth graph"
+                        className="h-full w-full object-cover opacity-95"
+                    />
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full border border-slate-200/35 bg-slate-950/55 px-4 py-1.5 text-[11px] font-medium tracking-[0.18em] text-slate-100 uppercase">
+                        Full Scene Depth Graph
+                    </div>
+                </div>
+            ) : null}
+
             {/* UI Overlay */}
             <Controls
                 lightingMode={lightingMode}
@@ -308,6 +329,27 @@ export default function App() {
                 currentRoomName={currentArea.name}
                 complianceTargets={complianceTargets}
                 setComplianceTargets={setComplianceTargets}
+                liveMonitorEnabled={liveMonitor.enabled}
+                liveMonitorState={liveMonitor.connectionState}
+            />
+
+            <LivePpePanel
+                backendUrl={liveMonitor.backendUrl}
+                setBackendUrl={liveMonitor.setBackendUrl}
+                enabled={liveMonitor.enabled}
+                connectionState={liveMonitor.connectionState}
+                error={liveMonitor.error}
+                frameRate={liveMonitor.frameRate}
+                previewSrc={liveMonitor.previewSrc}
+                depthStats={liveMonitor.depthStats}
+                workers={liveMonitor.workers}
+                alerts={liveMonitor.alerts}
+                backendWorkerCount={liveMonitor.backendWorkerCount}
+                backendDetectionCount={liveMonitor.backendDetectionCount}
+                backendPersonCount={liveMonitor.backendPersonCount}
+                backendPpeCount={liveMonitor.backendPpeCount}
+                onStart={liveMonitor.startMonitoring}
+                onStop={liveMonitor.stopMonitoring}
             />
 
             <div className={`room-transition-overlay ${transitionState ? 'active' : ''}`}>
@@ -337,6 +379,10 @@ export default function App() {
                     <div className="w-px h-4 bg-gray-600/50" />
                     <span className="text-gray-400 text-[11px]">
                         View: {currentArea.name}{selectedRoomIndex === null ? '' : ` (${selectedRoomIndex + 1}/${roomCount})`}
+                    </span>
+                    <div className="w-px h-4 bg-gray-600/50" />
+                    <span className="text-gray-400 text-[11px]">
+                        Backend: {liveMonitor.connectionState}
                     </span>
                     <div className="w-px h-4 bg-gray-600/50" />
                     <span className="text-gray-500 text-[10px]">

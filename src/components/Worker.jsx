@@ -3,8 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 
-const VEST_COLORS = ['#ff6b00', '#ffcc00', '#00cc44']
-const HELMET_COLORS = ['#ffffff', '#ffcc00', '#ff4444', '#2196f3']
+const VEST_COLORS = ['#39ff14']
+const HELMET_COLORS = ['#facc15']
 const GLOVE_COLORS = ['#4a4a4a', '#e65100', '#1b5e20']
 const SKIN_TONES = ['#d4a574', '#c49a6c', '#8d5524', '#6b3a2a', '#f5c6a0']
 const TASK_SPEEDS = {
@@ -21,9 +21,9 @@ const TASK_PAUSES = {
     carry: 0.9,
     lift: 2.1,
 }
-const OBSTACLE_CLEARANCE = 0.95
+const OBSTACLE_CLEARANCE = 1.25
 const QR_GRID_SIZE = 21
-const GRID_CELL_SIZE = 0.75
+const GRID_CELL_SIZE = 0.55
 
 function randomFrom(arr) {
     return arr[Math.floor(Math.random() * arr.length)]
@@ -545,156 +545,228 @@ export default function Worker({
         }
     })
 
-    const pantsColor = '#1a365d'
-    const shirtColor = '#2d3748'
-    const bootColor = '#1a1a1a'
-    const sleeveColor = '#1f2937'
+    const pantsColor = '#203a5e'
+    const shirtColor = '#4b5563'
+    const bootColor = '#252525'
+    const sleeveColor = '#5b6472'
+    const vestTrimColor = '#1f2937'
+    const reflectiveColor = '#d9dde3'
 
     return (
-        <group ref={group} position={path[0] ?? route[0]} scale={[1.05, 1.05, 1.05]}>
+        <group ref={group} position={path[0] ?? route[0]} scale={[0.98, 0.98, 0.98]}>
             <group ref={bodyBob}>
                 {/* Legs */}
-                <group ref={leftLeg} position={[-0.12, 0.86, 0]}>
-                    <mesh position={[0, -0.22, 0]} castShadow>
-                        <boxGeometry args={[0.16, 0.44, 0.17]} />
+                <group ref={leftLeg} position={[-0.11, 0.92, 0]}>
+                    <mesh position={[0, -0.24, 0]} castShadow>
+                        <boxGeometry args={[0.14, 0.48, 0.16]} />
                         <meshStandardMaterial color={pantsColor} />
                     </mesh>
-                    <mesh position={[0, -0.65, 0.02]} castShadow>
-                        <boxGeometry args={[0.14, 0.4, 0.14]} />
-                        <meshStandardMaterial color="#243b5b" />
+                    <mesh position={[0, -0.69, 0.02]} castShadow>
+                        <boxGeometry args={[0.12, 0.42, 0.12]} />
+                        <meshStandardMaterial color="#2f4a72" />
                     </mesh>
-                    <mesh position={[0, -0.88, 0.07]} castShadow>
-                        <boxGeometry args={[0.16, 0.08, 0.26]} />
+                    <mesh position={[0, -0.93, 0.07]} castShadow>
+                        <boxGeometry args={[0.15, 0.08, 0.28]} />
                         <meshStandardMaterial color={bootColor} />
                     </mesh>
                 </group>
-                <group ref={rightLeg} position={[0.12, 0.86, 0]}>
-                    <mesh position={[0, -0.22, 0]} castShadow>
-                        <boxGeometry args={[0.16, 0.44, 0.17]} />
+                <group ref={rightLeg} position={[0.11, 0.92, 0]}>
+                    <mesh position={[0, -0.24, 0]} castShadow>
+                        <boxGeometry args={[0.14, 0.48, 0.16]} />
                         <meshStandardMaterial color={pantsColor} />
                     </mesh>
-                    <mesh position={[0, -0.65, 0.02]} castShadow>
-                        <boxGeometry args={[0.14, 0.4, 0.14]} />
-                        <meshStandardMaterial color="#243b5b" />
+                    <mesh position={[0, -0.69, 0.02]} castShadow>
+                        <boxGeometry args={[0.12, 0.42, 0.12]} />
+                        <meshStandardMaterial color="#2f4a72" />
                     </mesh>
-                    <mesh position={[0, -0.88, 0.07]} castShadow>
-                        <boxGeometry args={[0.16, 0.08, 0.26]} />
+                    <mesh position={[0, -0.93, 0.07]} castShadow>
+                        <boxGeometry args={[0.15, 0.08, 0.28]} />
                         <meshStandardMaterial color={bootColor} />
                     </mesh>
                 </group>
 
                 {/* Torso */}
-                <mesh position={[0, 0.97, 0]} castShadow>
-                    <boxGeometry args={[0.34, 0.28, 0.22]} />
-                    <meshStandardMaterial color="#374151" />
+                <mesh position={[0, 1.03, 0]} castShadow>
+                    <boxGeometry args={[0.3, 0.24, 0.2]} />
+                    <meshStandardMaterial color="#44505f" />
                 </mesh>
-                <mesh position={[0, 1.24, 0]} castShadow>
-                    <boxGeometry args={[0.42, 0.48, 0.24]} />
+                <mesh position={[0, 1.29, 0]} castShadow>
+                    <boxGeometry args={[0.38, 0.52, 0.22]} />
                     <meshStandardMaterial color={shirtColor} />
                 </mesh>
-                <mesh position={[0, 1.51, 0]} castShadow>
-                    <boxGeometry args={[0.12, 0.1, 0.12]} />
+                <mesh position={[0, 1.53, 0]} castShadow>
+                    <boxGeometry args={[0.1, 0.12, 0.1]} />
                     <meshStandardMaterial color={skinTone} />
                 </mesh>
-                <mesh ref={carriedLoad} position={[0, 1.04, 0.26]} castShadow>
-                    <boxGeometry args={[0.24, 0.18, 0.18]} />
-                    <meshStandardMaterial color="#a16207" roughness={0.8} />
+                <mesh position={[0, 1.56, 0]} castShadow>
+                    <boxGeometry args={[0.43, 0.08, 0.2]} />
+                    <meshStandardMaterial color={shirtColor} />
+                </mesh>
+                <mesh ref={carriedLoad} position={[0, 1.06, 0.26]} castShadow>
+                    <boxGeometry args={[0.25, 0.19, 0.19]} />
+                    <meshStandardMaterial color="#9a5b17" roughness={0.78} />
                 </mesh>
 
                 {/* Safety Vest */}
                 {ppeConfig.vest && (
                     <>
-                        <mesh position={[0, 1.23, 0.01]} castShadow>
-                            <boxGeometry args={[0.44, 0.5, 0.25]} />
-                            <meshStandardMaterial color={vestColor} transparent opacity={0.85} />
+                        <mesh position={[0, 1.29, 0.035]} castShadow>
+                            <boxGeometry args={[0.42, 0.54, 0.12]} />
+                            <meshStandardMaterial color={vestColor} emissive={vestColor} emissiveIntensity={0.22} />
                         </mesh>
-                        <mesh position={[0, 1.31, 0.14]}>
-                            <boxGeometry args={[0.45, 0.05, 0.01]} />
-                            <meshStandardMaterial color="#c0c0c0" metalness={0.8} />
+                        <mesh position={[0, 1.29, -0.035]} castShadow>
+                            <boxGeometry args={[0.42, 0.54, 0.12]} />
+                            <meshStandardMaterial color={vestColor} emissive={vestColor} emissiveIntensity={0.16} />
                         </mesh>
-                        <mesh position={[0, 1.13, 0.14]}>
-                            <boxGeometry args={[0.45, 0.05, 0.01]} />
-                            <meshStandardMaterial color="#c0c0c0" metalness={0.8} />
+                        <mesh position={[0, 1.53, 0.02]} castShadow rotation={[0.62, 0, 0]}>
+                            <boxGeometry args={[0.1, 0.22, 0.02]} />
+                            <meshStandardMaterial color={vestColor} emissive={vestColor} emissiveIntensity={0.2} />
+                        </mesh>
+                        <mesh position={[0, 1.53, -0.02]} castShadow rotation={[-0.62, 0, 0]}>
+                            <boxGeometry args={[0.1, 0.22, 0.02]} />
+                            <meshStandardMaterial color={vestColor} emissive={vestColor} emissiveIntensity={0.15} />
+                        </mesh>
+                        <mesh position={[0, 1.39, 0.1]}>
+                            <boxGeometry args={[0.4, 0.045, 0.012]} />
+                            <meshStandardMaterial color={reflectiveColor} metalness={0.78} roughness={0.28} />
+                        </mesh>
+                        <mesh position={[0, 1.18, 0.1]}>
+                            <boxGeometry args={[0.4, 0.045, 0.012]} />
+                            <meshStandardMaterial color={reflectiveColor} metalness={0.78} roughness={0.28} />
+                        </mesh>
+                        <mesh position={[0, 1.39, -0.1]}>
+                            <boxGeometry args={[0.4, 0.045, 0.012]} />
+                            <meshStandardMaterial color={reflectiveColor} metalness={0.72} roughness={0.28} />
+                        </mesh>
+                        <mesh position={[0, 1.18, -0.1]}>
+                            <boxGeometry args={[0.4, 0.045, 0.012]} />
+                            <meshStandardMaterial color={reflectiveColor} metalness={0.72} roughness={0.28} />
+                        </mesh>
+                        <mesh position={[0.205, 1.29, 0]} castShadow>
+                            <boxGeometry args={[0.03, 0.54, 0.18]} />
+                            <meshStandardMaterial color={vestTrimColor} />
+                        </mesh>
+                        <mesh position={[-0.205, 1.29, 0]} castShadow>
+                            <boxGeometry args={[0.03, 0.54, 0.18]} />
+                            <meshStandardMaterial color={vestTrimColor} />
                         </mesh>
                     </>
                 )}
 
                 {/* Arms */}
-                <group ref={leftArm} position={[-0.28, 1.34, 0]}>
-                    <mesh position={[0, -0.17, 0]} castShadow>
-                        <boxGeometry args={[0.12, 0.32, 0.12]} />
+                <group ref={leftArm} position={[-0.25, 1.4, 0]}>
+                    <mesh position={[0, -0.19, 0]} castShadow>
+                        <boxGeometry args={[0.1, 0.36, 0.1]} />
                         <meshStandardMaterial color={sleeveColor} />
                     </mesh>
-                    <mesh position={[0, -0.48, 0]} castShadow>
-                        <boxGeometry args={[0.11, 0.3, 0.11]} />
-                        <meshStandardMaterial color="#374151" />
+                    <mesh position={[0, -0.52, 0]} castShadow>
+                        <boxGeometry args={[0.09, 0.34, 0.09]} />
+                        <meshStandardMaterial color="#4b5563" />
                     </mesh>
-                    <mesh position={[-0.066, -0.14, 0]} rotation={[0, Math.PI / 2, 0]} castShadow>
-                        <planeGeometry args={[0.18, 0.18]} />
+                    <mesh position={[-0.056, -0.15, 0]} rotation={[0, Math.PI / 2, 0]} castShadow>
+                        <planeGeometry args={[0.16, 0.16]} />
                         <meshBasicMaterial map={qrBadgeTexture} toneMapped={false} />
                     </mesh>
-                    <mesh position={[0, -0.68, 0.02]} castShadow>
-                        <sphereGeometry args={[0.055, 8, 8]} />
-                        <meshStandardMaterial color={ppeConfig.gloves ? gloveColor : skinTone} />
-                    </mesh>
+                    {ppeConfig.gloves ? (
+                        <group position={[0, -0.77, 0.02]}>
+                            <mesh castShadow>
+                                <boxGeometry args={[0.075, 0.085, 0.08]} />
+                                <meshStandardMaterial color={gloveColor} roughness={0.72} />
+                            </mesh>
+                            <mesh position={[0, -0.02, 0.045]} castShadow>
+                                <sphereGeometry args={[0.038, 8, 8]} />
+                                <meshStandardMaterial color={gloveColor} roughness={0.7} />
+                            </mesh>
+                            <mesh position={[0, 0.055, 0]} castShadow>
+                                <boxGeometry args={[0.068, 0.028, 0.07]} />
+                                <meshStandardMaterial color="#cbd5e1" roughness={0.45} metalness={0.1} />
+                            </mesh>
+                        </group>
+                    ) : (
+                        <mesh position={[0, -0.77, 0.02]} castShadow>
+                            <sphereGeometry args={[0.05, 8, 8]} />
+                            <meshStandardMaterial color={skinTone} />
+                        </mesh>
+                    )}
                 </group>
-                <group ref={rightArm} position={[0.28, 1.34, 0]}>
-                    <mesh position={[0, -0.17, 0]} castShadow>
-                        <boxGeometry args={[0.12, 0.32, 0.12]} />
+                <group ref={rightArm} position={[0.25, 1.4, 0]}>
+                    <mesh position={[0, -0.19, 0]} castShadow>
+                        <boxGeometry args={[0.1, 0.36, 0.1]} />
                         <meshStandardMaterial color={sleeveColor} />
                     </mesh>
-                    <mesh position={[0, -0.48, 0]} castShadow>
-                        <boxGeometry args={[0.11, 0.3, 0.11]} />
-                        <meshStandardMaterial color="#374151" />
+                    <mesh position={[0, -0.52, 0]} castShadow>
+                        <boxGeometry args={[0.09, 0.34, 0.09]} />
+                        <meshStandardMaterial color="#4b5563" />
                     </mesh>
-                    <mesh position={[0.066, -0.14, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow>
-                        <planeGeometry args={[0.18, 0.18]} />
+                    <mesh position={[0.056, -0.15, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow>
+                        <planeGeometry args={[0.16, 0.16]} />
                         <meshBasicMaterial map={qrBadgeTexture} toneMapped={false} />
                     </mesh>
-                    <mesh position={[0, -0.68, 0.02]} castShadow>
-                        <sphereGeometry args={[0.055, 8, 8]} />
-                        <meshStandardMaterial color={ppeConfig.gloves ? gloveColor : skinTone} />
-                    </mesh>
+                    {ppeConfig.gloves ? (
+                        <group position={[0, -0.77, 0.02]}>
+                            <mesh castShadow>
+                                <boxGeometry args={[0.075, 0.085, 0.08]} />
+                                <meshStandardMaterial color={gloveColor} roughness={0.72} />
+                            </mesh>
+                            <mesh position={[0, -0.02, 0.045]} castShadow>
+                                <sphereGeometry args={[0.038, 8, 8]} />
+                                <meshStandardMaterial color={gloveColor} roughness={0.7} />
+                            </mesh>
+                            <mesh position={[0, 0.055, 0]} castShadow>
+                                <boxGeometry args={[0.068, 0.028, 0.07]} />
+                                <meshStandardMaterial color="#cbd5e1" roughness={0.45} metalness={0.1} />
+                            </mesh>
+                        </group>
+                    ) : (
+                        <mesh position={[0, -0.77, 0.02]} castShadow>
+                            <sphereGeometry args={[0.05, 8, 8]} />
+                            <meshStandardMaterial color={skinTone} />
+                        </mesh>
+                    )}
                 </group>
 
                 {/* Head */}
-                <mesh position={[0, 1.7, 0]} castShadow>
-                    <sphereGeometry args={[0.15, 14, 12]} />
+                <mesh position={[0, 1.78, 0]} castShadow>
+                    <sphereGeometry args={[0.145, 14, 12]} />
                     <meshStandardMaterial color={skinTone} />
                 </mesh>
-                <mesh position={[-0.05, 1.72, 0.13]}>
-                    <sphereGeometry args={[0.018, 6, 6]} />
+                <mesh position={[-0.047, 1.79, 0.125]}>
+                    <sphereGeometry args={[0.016, 6, 6]} />
                     <meshStandardMaterial color="#1a1a1a" />
                 </mesh>
-                <mesh position={[0.05, 1.72, 0.13]}>
-                    <sphereGeometry args={[0.018, 6, 6]} />
+                <mesh position={[0.047, 1.79, 0.125]}>
+                    <sphereGeometry args={[0.016, 6, 6]} />
                     <meshStandardMaterial color="#1a1a1a" />
                 </mesh>
-                <mesh position={[0, 1.63, 0.14]}>
-                    <boxGeometry args={[0.06, 0.02, 0.02]} />
-                    <meshStandardMaterial color="#b45309" />
+                <mesh position={[0, 1.69, 0.142]}>
+                    <boxGeometry args={[0.05, 0.018, 0.02]} />
+                    <meshStandardMaterial color="#9a3412" />
+                </mesh>
+                <mesh position={[0, 1.75, 0.15]} castShadow>
+                    <boxGeometry args={[0.028, 0.05, 0.02]} />
+                    <meshStandardMaterial color={skinTone} />
                 </mesh>
 
                 {/* Helmet */}
                 {ppeConfig.helmet && (
-                    <group position={[0, 1.86, 0]}>
+                    <group position={[0, 1.94, 0]}>
                         <mesh castShadow>
                             <sphereGeometry args={[0.18, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
-                            <meshStandardMaterial color={helmetColor} roughness={0.4} />
+                            <meshStandardMaterial color={helmetColor} roughness={0.34} metalness={0.08} />
                         </mesh>
                         <mesh position={[0, -0.02, 0]} castShadow>
                             <cylinderGeometry args={[0.19, 0.21, 0.04, 14]} />
-                            <meshStandardMaterial color={helmetColor} roughness={0.4} />
+                            <meshStandardMaterial color={helmetColor} roughness={0.34} metalness={0.08} />
                         </mesh>
                         <mesh position={[0, -0.04, 0.12]} castShadow>
                             <boxGeometry args={[0.18, 0.02, 0.08]} />
-                            <meshStandardMaterial color={helmetColor} roughness={0.4} />
+                            <meshStandardMaterial color={helmetColor} roughness={0.34} metalness={0.08} />
                         </mesh>
                     </group>
                 )}
 
                 {/* Floating label */}
-                <Html position={[0, 2.32, 0]} center distanceFactor={12} style={{ pointerEvents: 'none' }}>
+                <Html position={[0, 2.42, 0]} center distanceFactor={12} style={{ pointerEvents: 'none' }}>
                     <div
                         style={{
                             background: 'rgba(30,41,59,0.85)',

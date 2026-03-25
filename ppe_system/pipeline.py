@@ -1,18 +1,20 @@
 from __future__ import annotations
 
+import copy
 import json
 import time
 from pathlib import Path
 
 import cv2
 
-from .compliance import ComplianceEngine
+from .compliance import ComplianceEngine, compute_compliance
 from .config import SystemConfig
-from .detection import YoloPpeDetector, resolve_device
+from .detection import YoloPpeDetector, resolve_device, run_yolo_detection
+from .segmentation import SamSegmenter, run_sam_segmentation
 from .schemas import FrameComplianceResult
 from .sources import FrameSource
 from .tracking import DeepSortTrackerAdapter
-from .visualization import annotate_frame
+from .visualization import draw_results
 
 
 class PPECompliancePipeline:
@@ -20,6 +22,7 @@ class PPECompliancePipeline:
         self.config = config
         self.device = resolve_device(config.detector.device)
         self.detector = YoloPpeDetector(config.detector)
+        self.segmenter = SamSegmenter(config.sam, self.device) if config.sam.enabled else None
         self.tracker = DeepSortTrackerAdapter(
             config.tracker,
             gpu_enabled=self.device.startswith("cuda"),
@@ -32,14 +35,35 @@ class PPECompliancePipeline:
         frame_index: int,
         timestamp_ms: float | None = None,
     ) -> FrameComplianceResult:
-        people, ppe_items = self.detector.infer(frame)
+        people, ppe_items = run_yolo_detection(frame, self.detector)
+        sam_prompts = []
+        if self.config.sam.segment_person_boxes:
+            sam_prompts.extend(people)
+        if self.config.sam.segment_ppe_boxes:
+            sam_prompts.extend(ppe_items)
+        segmented = run_sam_segmentation(frame, sam_prompts, self.segmenter)
+        segmented_map = {
+            (detection.label, detection.confidence, detection.bbox): detection
+            for detection in segmented
+        }
+        people = [
+            segmented_map.get((detection.label, detection.confidence, detection.bbox), detection)
+            for detection in people
+        ]
+        ppe_items = [
+            segmented_map.get((detection.label, detection.confidence, detection.bbox), detection)
+            for detection in ppe_items
+        ]
         tracks = self.tracker.update(people, frame)
-        return self.compliance.evaluate_frame(
+        result = compute_compliance(
+            engine=self.compliance,
             tracks=tracks,
             ppe_detections=ppe_items,
             frame_index=frame_index,
             timestamp_ms=float(timestamp_ms if timestamp_ms is not None else frame_index),
         )
+        result.detections = [*people, *ppe_items]
+        return result
 
     def process_frame_json(
         self,
@@ -71,6 +95,8 @@ class PPECompliancePipeline:
         last_time = time.perf_counter()
         output_size = None
         processed_frames = 0
+        last_result: FrameComplianceResult | None = None
+        process_every_n_frames = max(1, runtime.process_every_n_frames)
 
         if runtime.output_jsonl_path:
             jsonl_path = Path(runtime.output_jsonl_path)
@@ -79,7 +105,14 @@ class PPECompliancePipeline:
 
         try:
             for packet in frame_source.iter_frames():
-                result = self.process_frame(packet.frame, packet.frame_index, packet.timestamp_ms)
+                if packet.frame_index % process_every_n_frames == 0 or last_result is None:
+                    result = self.process_frame(packet.frame, packet.frame_index, packet.timestamp_ms)
+                    last_result = result
+                else:
+                    result = copy.deepcopy(last_result)
+                    result.frame_index = packet.frame_index
+                    result.timestamp_ms = packet.timestamp_ms
+                    result.alerts = []
 
                 now = time.perf_counter()
                 elapsed = max(now - last_time, 1e-6)
@@ -88,7 +121,7 @@ class PPECompliancePipeline:
 
                 annotated = None
                 if runtime.save_annotated or runtime.display:
-                    annotated = annotate_frame(
+                    annotated = draw_results(
                         packet.frame,
                         result,
                         show_fps=runtime.show_fps_overlay,
@@ -125,3 +158,7 @@ class PPECompliancePipeline:
                 jsonl_handle.close()
             if runtime.display:
                 cv2.destroyAllWindows()
+
+
+def load_models(config: SystemConfig) -> PPECompliancePipeline:
+    return PPECompliancePipeline(config)

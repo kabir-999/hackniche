@@ -5,6 +5,8 @@ export default function Controls({
     roomCount, setRoomCount,
     currentRoomName,
     complianceTargets, setComplianceTargets,
+    liveMonitorEnabled,
+    liveMonitorState,
 }) {
     const updateComplianceTarget = (item, value) => {
         setComplianceTargets((prev) => ({ ...prev, [item]: value }))
@@ -14,11 +16,13 @@ export default function Controls({
         <div className="fixed top-4 left-4 z-50 flex flex-col gap-3">
             {/* Title bar */}
             <div className="glass rounded-xl px-4 py-3 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <div className={`w-2 h-2 rounded-full ${liveMonitorEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-red-500 animate-pulse'}`} />
                 <span className="text-white text-sm font-semibold tracking-wide">
                     WAREHOUSE CCTV
                 </span>
-                <span className="text-gray-400 text-xs ml-2">LIVE</span>
+                <span className="text-gray-400 text-xs ml-2">
+                    {liveMonitorEnabled ? `LIVE ${liveMonitorState.toUpperCase()}` : 'SIMULATION'}
+                </span>
             </div>
 
             {/* Controls panel */}

@@ -37,6 +37,12 @@ def is_probable_local_media_path(source: str | int | None) -> bool:
     )
 
 
+def is_probable_image_path(source: str | int | None) -> bool:
+    if not isinstance(source, str):
+        return False
+    return Path(source).suffix.lower() in IMAGE_EXTENSIONS
+
+
 def is_live_camera_source(source: str | int | None) -> bool:
     return isinstance(parse_source(source), int)
 
@@ -83,6 +89,9 @@ class FrameSource:
     def iter_frames(self):
         if self.frames_dir is not None:
             yield from self._iter_image_directory()
+            return
+        if is_probable_image_path(self.source):
+            yield from self._iter_single_image()
             return
         yield from self._iter_capture()
 
@@ -171,3 +180,14 @@ class FrameSource:
                 timestamp_ms=float(frame_index),
                 frame=frame,
             )
+
+    def _iter_single_image(self):
+        image_path = Path(str(self.source)).expanduser()
+        if not image_path.exists():
+            raise FileNotFoundError(f"Image source file not found: {image_path}")
+
+        frame = cv2.imread(str(image_path))
+        if frame is None:
+            raise RuntimeError(f"Unable to decode image source: {image_path}")
+
+        yield FramePacket(frame_index=0, timestamp_ms=0.0, frame=frame)

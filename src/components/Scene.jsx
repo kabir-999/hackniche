@@ -142,10 +142,20 @@ function PalletStack({ position, levels = 3, color = '#8b7355' }) {
     return (
         <group position={position}>
             {Array.from({ length: levels }, (_, index) => (
-                <mesh key={index} position={[0, 0.07 + index * 0.16, 0]} castShadow receiveShadow>
-                    <boxGeometry args={[1.5, 0.12, 1.3]} />
-                    <meshStandardMaterial color={color} roughness={0.88} />
-                </mesh>
+                <group key={index} position={[0, index * 0.16, 0]}>
+                    {[-0.46, 0, 0.46].map((z) => (
+                        <mesh key={z} position={[0, 0.07, z]} castShadow receiveShadow>
+                            <boxGeometry args={[1.5, 0.035, 0.24]} />
+                            <meshStandardMaterial color={color} roughness={0.88} />
+                        </mesh>
+                    ))}
+                    {[-0.48, 0.48].map((x) => (
+                        <mesh key={x} position={[x, 0.02, 0]} castShadow receiveShadow>
+                            <boxGeometry args={[0.09, 0.08, 1.2]} />
+                            <meshStandardMaterial color="#6f5434" roughness={0.9} />
+                        </mesh>
+                    ))}
+                </group>
             ))}
         </group>
     )
@@ -153,10 +163,16 @@ function PalletStack({ position, levels = 3, color = '#8b7355' }) {
 
 function Crate({ position, size = 1, color = '#b7791f' }) {
     return (
-        <mesh position={[position[0], size / 2, position[2]]} castShadow receiveShadow>
-            <boxGeometry args={[size, size, size]} />
-            <meshStandardMaterial color={color} roughness={0.85} />
-        </mesh>
+        <group position={[position[0], size / 2, position[2]]}>
+            <mesh castShadow receiveShadow>
+                <boxGeometry args={[size, size, size]} />
+                <meshStandardMaterial color={color} roughness={0.85} />
+            </mesh>
+            <mesh position={[0, 0, size / 2 + 0.001]}>
+                <boxGeometry args={[size * 0.9, size * 0.9, 0.01]} />
+                <meshStandardMaterial color="#9a5b17" roughness={0.92} />
+            </mesh>
+        </group>
     )
 }
 
@@ -172,6 +188,17 @@ function Barrel({ position, color = '#4a5568' }) {
 function Forklift({ position, color = '#d69e2e' }) {
     return (
         <group position={position}>
+            {[
+                [-0.72, 0.26, -1.08],
+                [0.72, 0.26, -1.08],
+                [-0.72, 0.26, 1.08],
+                [0.72, 0.26, 1.08],
+            ].map(([x, y, z]) => (
+                <mesh key={`${x}-${z}`} position={[x, y, z]} castShadow>
+                    <cylinderGeometry args={[0.28, 0.28, 0.18, 18]} rotation={[Math.PI / 2, 0, 0]} />
+                    <meshStandardMaterial color="#111827" roughness={0.65} />
+                </mesh>
+            ))}
             <mesh position={[0, 0.8, 0]} castShadow>
                 <boxGeometry args={[1.8, 1.2, 3]} />
                 <meshStandardMaterial color={color} roughness={0.58} />
@@ -190,6 +217,10 @@ function Forklift({ position, color = '#d69e2e' }) {
                 <boxGeometry args={[1.4, 2.4, 0.15]} />
                 <meshStandardMaterial color="#64748b" metalness={0.55} />
             </mesh>
+            <mesh position={[0, 1.95, -0.85]} castShadow>
+                <boxGeometry args={[1.35, 0.08, 0.08]} />
+                <meshStandardMaterial color="#475569" metalness={0.48} />
+            </mesh>
         </group>
     )
 }
@@ -201,6 +232,15 @@ function ConveyorBelt({ position, length = 10 }) {
                 <boxGeometry args={[length, 0.15, 1.4]} />
                 <meshStandardMaterial color="#1f2937" roughness={0.4} metalness={0.6} />
             </mesh>
+            {Array.from({ length: Math.max(6, Math.floor(length * 1.2)) }, (_, index) => {
+                const x = -length / 2 + 0.5 + index * (length / Math.max(6, Math.floor(length * 1.2)))
+                return (
+                    <mesh key={index} position={[x, 1.29, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+                        <cylinderGeometry args={[0.03, 0.03, 1.16, 10]} />
+                        <meshStandardMaterial color="#0f172a" metalness={0.82} roughness={0.26} />
+                    </mesh>
+                )
+            })}
             {[-(length / 2 - 0.5), 0, length / 2 - 0.5].map((x) => (
                 <mesh key={x} position={[x, 0.6, 0]} castShadow>
                     <boxGeometry args={[0.3, 1.2, 1.6]} />
@@ -213,6 +253,10 @@ function ConveyorBelt({ position, length = 10 }) {
                     <meshStandardMaterial color="#94a3b8" metalness={0.6} roughness={0.3} />
                 </mesh>
             ))}
+            <mesh position={[length / 2 - 0.6, 1.48, 0.88]} castShadow>
+                <boxGeometry args={[0.18, 0.1, 0.18]} />
+                <meshStandardMaterial color="#ef4444" roughness={0.66} />
+            </mesh>
         </group>
     )
 }

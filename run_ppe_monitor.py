@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from ppe_system.config import ComplianceConfig, DetectorConfig, RuntimeConfig, SystemConfig, TrackerConfig
+from ppe_system.config import ComplianceConfig, DetectorConfig, RuntimeConfig, SamConfig, SystemConfig, TrackerConfig
 from ppe_system.pipeline import PPECompliancePipeline
 
 
@@ -23,10 +23,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source", default=None, help="Video path, RTSP URL, or webcam index.")
     parser.add_argument("--frames-dir", default=None, help="Directory containing an ordered frame sequence.")
     parser.add_argument("--device", default="auto", help="Inference device: auto, cpu, cuda:0, ...")
-    parser.add_argument("--imgsz", type=int, default=960, help="YOLO inference image size.")
+    parser.add_argument("--imgsz", type=int, default=640, help="YOLO inference image size.")
     parser.add_argument("--conf", type=float, default=0.25, help="Global detection confidence threshold.")
     parser.add_argument("--person-conf", type=float, default=0.35, help="Minimum confidence for person detections.")
     parser.add_argument("--alert-frames", type=int, default=15, help="Trigger helmet alerts after N consecutive missing frames.")
+    parser.add_argument("--sam-model", default="facebook/sam-vit-base", help="Hugging Face SAM model id.")
+    parser.add_argument("--disable-sam", action="store_true", help="Disable SAM segmentation and use YOLO-only overlap logic.")
+    parser.add_argument("--sam-local-files-only", action="store_true", help="Load SAM only from the local Hugging Face cache.")
     parser.add_argument("--camera-backend", default="auto", help="Camera backend for live sources: auto, any, avfoundation.")
     parser.add_argument("--camera-warmup", type=int, default=20, help="Warmup grabs before treating a live camera as failed.")
     parser.add_argument("--camera-retries", type=int, default=60, help="Frame read retries for live camera startup.")
@@ -34,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-video", default=None, help="Optional path to save the annotated output video.")
     parser.add_argument("--output-jsonl", default=None, help="Optional path to save frame-wise JSONL output.")
     parser.add_argument("--max-frames", type=int, default=None, help="Stop after N frames.")
+    parser.add_argument("--process-every-n", type=int, default=1, help="Run YOLO/SAM every Nth frame and reuse the latest result in between.")
     return parser
 
 
@@ -75,6 +79,11 @@ def main() -> int:
             image_size=args.imgsz,
             device=args.device,
         ),
+        sam=SamConfig(
+            enabled=not args.disable_sam,
+            model_id=args.sam_model,
+            local_files_only=args.sam_local_files_only,
+        ),
         tracker=TrackerConfig(),
         compliance=ComplianceConfig(missing_alert_frames=args.alert_frames),
         runtime=RuntimeConfig(
@@ -83,6 +92,7 @@ def main() -> int:
             output_jsonl_path=args.output_jsonl,
             max_frames=args.max_frames,
             save_annotated=bool(args.output_video or args.show),
+            process_every_n_frames=args.process_every_n,
         ),
     )
 

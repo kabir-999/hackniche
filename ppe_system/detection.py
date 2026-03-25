@@ -89,3 +89,7 @@ class YoloPpeDetector:
                 ppe.append(detection)
 
         return people, ppe
+
+
+def run_yolo_detection(frame, detector: YoloPpeDetector) -> tuple[list[DetectionBox], list[DetectionBox]]:
+    return detector.infer(frame)

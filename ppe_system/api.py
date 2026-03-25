@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from .config import SystemConfig
-from .pipeline import PPECompliancePipeline
+from .pipeline import PPECompliancePipeline, load_models
 
 
 def create_pipeline(config: SystemConfig | None = None) -> PPECompliancePipeline:
-    return PPECompliancePipeline(config or SystemConfig())
+    return load_models(config or SystemConfig())
 
 
 def process_frame_json(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
+import math
 
 from .config import ComplianceConfig
 from .schemas import AlertEvent, DetectionBox, FrameComplianceResult, TrackBox, WorkerCompliance
@@ -50,6 +51,20 @@ def point_in_box(point: tuple[float, float], box: tuple[float, float, float, flo
     x, y = point
     x1, y1, x2, y2 = box
     return x1 <= x <= x2 and y1 <= y <= y2
+
+
+def clamp_region_to_mask(
+    region_box: tuple[float, float, float, float],
+    mask_shape: tuple[int, int],
+) -> tuple[int, int, int, int]:
+    height, width = mask_shape
+    x1, y1, x2, y2 = region_box
+    return (
+        max(0, min(width, int(math.floor(x1)))),
+        max(0, min(height, int(math.floor(y1)))),
+        max(0, min(width, int(math.ceil(x2)))),
+        max(0, min(height, int(math.ceil(y2)))),
+    )
 
 
 @dataclass(slots=True)
@@ -149,6 +164,7 @@ class ComplianceEngine:
             timestamp_ms=timestamp_ms,
             workers=workers,
             alerts=alerts,
+            detections=ppe_detections,
         )
 
     def get_track_history(self, track_id: int) -> list[dict]:
@@ -179,8 +195,13 @@ class ComplianceEngine:
             if not point_in_box(center, person_bbox):
                 continue
 
-            region_match_score = self._best_region_score(detection.bbox, region_boxes)
-            if region_match_score < self.config.min_region_overlap:
+            region_match_score = self._best_region_score(detection, region_boxes)
+            minimum_score = (
+                self.config.min_mask_region_overlap
+                if detection.mask is not None
+                else self.config.min_region_overlap
+            )
+            if region_match_score < minimum_score:
                 continue
 
             if detection.canonical_label in POSITIVE_LABELS[item_name]:
@@ -196,6 +217,15 @@ class ComplianceEngine:
 
     def _best_region_score(
         self,
+        detection: DetectionBox,
+        region_boxes: list[tuple[float, float, float, float]],
+    ) -> float:
+        bbox_score = self._best_bbox_region_score(detection.bbox, region_boxes)
+        mask_score = self._best_mask_region_score(detection, region_boxes)
+        return mask_score if detection.mask is not None else bbox_score
+
+    def _best_bbox_region_score(
+        self,
         detection_bbox: tuple[float, float, float, float],
         region_boxes: list[tuple[float, float, float, float]],
     ) -> float:
@@ -209,6 +239,26 @@ class ComplianceEngine:
             ),
             default=0.0,
         )
+
+    def _best_mask_region_score(
+        self,
+        detection: DetectionBox,
+        region_boxes: list[tuple[float, float, float, float]],
+    ) -> float:
+        if detection.mask is None or detection.mask_area <= 0:
+            return 0.0
+
+        best_score = 0.0
+        for region_box in region_boxes:
+            x1, y1, x2, y2 = clamp_region_to_mask(region_box, detection.mask.shape)
+            if x2 <= x1 or y2 <= y1:
+                continue
+            region_mask = detection.mask[y1:y2, x1:x2]
+            if region_mask.size == 0:
+                continue
+            overlap_pixels = int(region_mask.sum())
+            best_score = max(best_score, overlap_pixels / max(detection.mask_area, 1))
+        return best_score
 
     def _build_region_boxes(
         self, item_name: str, person_bbox: tuple[float, float, float, float]
@@ -275,3 +325,18 @@ class ComplianceEngine:
                 ),
             ]
         return [person_bbox]
+
+
+def compute_compliance(
+    engine: ComplianceEngine,
+    tracks: list[TrackBox],
+    ppe_detections: list[DetectionBox],
+    frame_index: int,
+    timestamp_ms: float,
+) -> FrameComplianceResult:
+    return engine.evaluate_frame(
+        tracks=tracks,
+        ppe_detections=ppe_detections,
+        frame_index=frame_index,
+        timestamp_ms=timestamp_ms,
+    )
